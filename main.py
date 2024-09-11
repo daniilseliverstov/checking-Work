@@ -1,99 +1,122 @@
+import tkinter as tk
 import time
-from tkinter import *
-from datetime import datetime
-
-temp = 0
-after_id = ''
-corr = 0
-incorr = 0
-start_time = 0
-stop_time = 0
 
 
-def update_grade():
-    all_homework = corr + incorr
-    if all_homework > 0:
-        grade = (corr / all_homework) * 100
-        average_time = (stop_time - start_time) / all_homework
-    else:
-        grade = 0
-        average_time = 0
-    label_res.configure(text=f"Успеваемость: {grade:.2f}%")
-    label_h.configure(text=f"Проверено {all_homework} дз")
-    label_time.configure(text=f'В среднем на проверку: {average_time:.2f} сек')
+class TimerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title('Счетчик ДЗ')
+        self.root.geometry("350x150")
+
+        # Таймер
+        self.time_label = tk.Label(root, text='00:00:00', font=('Comic Sans MS', 10))
+        self.time_label.pack()
+
+        self.start_button = tk.Button(root, font=('Comic Sans MS', 10), text='Начать',
+                                      width=10, command=self.start_timer)
+        self.start_button.pack()
+
+        self.pause_button = tk.Button(root, text='Пауза', font=('Comic Sans MS', 10),
+                                      width=10, command=self.pause_timer)
+
+        self.stop_button = tk.Button(root, text='Завершить', font=('Comic Sans MS', 10),
+                                     width=10, command=self.stop_timer)
+
+        # Проверка заданий
+        self.correct_button = tk.Button(root, text=f'Верно', width=10, command=self.correct_answer)
+        self.correct_button.place(x=20, y=80)
+        self.correct_button['state'] = 'disabled'
+
+        self.incorrect_button = tk.Button(root, text='Неверно', width=10, command=self.incorrect_answer)
+        self.incorrect_button.place(x=20, y=120)
+        self.incorrect_button['state'] = 'disabled'
+
+        # Статистика
+        self.result_label = tk.Label(root, text='Проверено: 0, Успеваемость: 0.0%', font=('Comic Sans MS', 10))
+        self.result_label.pack()
+
+        # Инициализация
+        self.running = False
+        self.start_time = None
+        self.elapsed_time = 0
+        self.total_checked = 0
+        self.correct_checked = 0
+        self.incorrect_checked = 0
+
+    def update_time(self):
+        if self.running:
+            current_time = time.time()
+            elapsed = self.elapsed_time + (current_time - self.start_time)
+            self.elapsed_time = elapsed
+            self.start_time = current_time
+
+            hours, remainder = divmod(int(elapsed), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            self.time_label.config(text=f"{hours:02}:{minutes:02}:{seconds:02}")
+
+            self.root.after(1000, self.update_time)
+
+    def start_timer(self):
+        if not self.running:
+            self.start_time = time.time()
+            self.running = True
+            self.correct_button['state'] = 'normal'
+            self.incorrect_button['state'] = 'normal'
+            self.stop_button.place(x=250, y=110)
+            self.pause_button.pack()
+            self.update_time()
+            self.start_button.forget()
+
+    def pause_timer(self):
+        if self.running:
+            self.elapsed_time += time.time() - self.start_time
+            self.running = False
+            self.correct_button['state'] = 'disabled'
+            self.incorrect_button['state'] = 'disabled'
+            self.start_button.pack()
+            self.pause_button.forget()
+            self.start_button.configure(text='Продолжить')
+
+    def stop_timer(self):
+        if self.running:
+            self.elapsed_time += time.time() - self.start_time
+            self.running = False
+        self.correct_button['state'] = 'disabled'
+        self.incorrect_button['state'] = 'disabled'
+        self.start_button.forget()
+        self.pause_button.forget()
+        self.stop_button.forget()
+
+    def correct_answer(self):
+        self.total_checked += 1
+        self.correct_checked += 1
+        self.correct_button.configure(text=f'Верно: {self.correct_checked}')
+        self.update_results()
+
+    def incorrect_answer(self):
+        self.total_checked += 1
+        self.incorrect_checked += 1
+        self.incorrect_button.configure(text=f'Неверно: {self.incorrect_checked}')
+        self.update_results()
+
+    def update_results(self):
+        if self.total_checked > 0:
+            percentage = (self.correct_checked / self.total_checked) * 100
+        else:
+            percentage = 0.0
+
+        self.result_label.config(
+            text=f'Проверено: {self.total_checked}, Успеваемость: {percentage:.1f}%'
+        )
 
 
-def tick():  # Функция секундомера
-    global temp, after_id
-    after_id = root.after(1000, tick)
-    hour = int(datetime.fromtimestamp(temp).strftime('%H')) - 3
-    f_temp = datetime.fromtimestamp(temp).strftime(f'{hour}:%M:%S')  # Формат времени
-    label.configure(text=str(f_temp))
-    temp += 1
+if __name__ == "__main__":
+    root = tk.Tk()
+    # Меняем иконку
+    icon = tk.PhotoImage(file="icon.png")
+    root.iconphoto(False, icon)
 
+    app = TimerApp(root)
 
-def stop_tick():  # Функция остановки таймера
-    global stop_time
-    btn_end.forget()  # Убираем кнопку
-    btn_correct['state'] = 'disabled'  # деактивация кнопки
-    btn_incorrect['state'] = 'disabled'
-    root.after_cancel(after_id)
-    stop_time = time.time()
-    update_grade()
-
-
-def start_tick():
-    global start_time
-    btn_start.forget()
-    btn_end.pack()
-    btn_correct['state'] = 'normal'
-    btn_incorrect['state'] = 'normal'
-    label_res.pack()
-    tick()
-    start_time = time.time()
-
-
-def correct_answer():
-    global corr
-    corr += 1
-    btn_correct.configure(text=f"Зачет ({corr})")
-    update_grade()
-
-
-def incorrect_answer():
-    global incorr
-    incorr += 1
-    btn_incorrect.configure(text=f'Незачет ({incorr})')
-    update_grade()
-
-
-root = Tk()  # создаем корневой объект - окно
-root.title("Счетчик ДЗ")  # устанавливаем заголовок окна
-root.geometry("350x200")  # устанавливаем размеры окна
-
-icon = PhotoImage(file="icon.png")  # Меняем иконку
-root.iconphoto(False, icon)
-
-label = Label(root, font=('Comic Sans MS', 15), text="00:00:00")  # создаем текстовую метку, таймер
-label.pack()  # размещаем метку в окне
-
-btn_start = Button(root, font=('Comic Sans MS', 10), text="Начать", width=10, command=start_tick)  # создаем кнопки
-btn_start.pack()
-
-btn_end = Button(root, font=('Comic Sans MS', 10), text="Завершить", width=10, command=stop_tick)
-
-btn_correct = Button(root, font=('Comic Sans MS', 10), text=f"Зачет ({corr})", width=10, command=correct_answer)
-btn_correct.place(x=20, y=80)
-btn_correct['state'] = 'disabled'
-
-btn_incorrect = Button(root, font=('Comic Sans MS', 10), text=f"Незачет ({incorr})", width=10, command=incorrect_answer)
-btn_incorrect.place(x=20, y=120)
-btn_incorrect['state'] = 'disabled'
-
-label_res = Label(root, font=('Comic Sans MS', 10), text=f"Успеваемость: %")
-label_h = Label(root, font=('Comic Sans MS', 10), text=f"Проверено 0 дз")
-label_h.place(x=200, y=90)
-label_time = Label(root, font=('Comic Sans MS', 10), text=f"В среднем на проверку:")
-label_time.place(x=20, y=170)
-
-root.mainloop()
+    root.attributes("-topmost", True)
+    root.mainloop()
