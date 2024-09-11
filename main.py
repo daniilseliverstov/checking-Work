@@ -34,6 +34,8 @@ class TimerApp:
         # Статистика
         self.result_label = tk.Label(root, text='Проверено: 0, Успеваемость: 0.0%', font=('Comic Sans MS', 10))
         self.result_label.pack()
+        self.midl_time = tk.Label(root, text='В среднем на проверку: ')
+        self.midl_time.pack()
 
         # Инициализация
         self.running = False
@@ -53,6 +55,8 @@ class TimerApp:
             hours, remainder = divmod(int(elapsed), 3600)
             minutes, seconds = divmod(remainder, 60)
             self.time_label.config(text=f"{hours:02}:{minutes:02}:{seconds:02}")
+            if self.total_checked > 0:
+                self.midl_time.config(text=f"{hours / self.total_checked}:{minutes / self.total_checked}:{seconds / self.total_checked}")
 
             self.root.after(1000, self.update_time)
 
