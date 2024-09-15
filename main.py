@@ -1,12 +1,13 @@
 import tkinter as tk
 import time
+import datetime
 
 
 class TimerApp:
     def __init__(self, root):
         self.root = root
         self.root.title('Счетчик ДЗ')
-        self.root.geometry("350x150")
+        self.root.geometry("350x180")
 
         # Таймер
         self.time_label = tk.Label(root, text='00:00:00', font=('Comic Sans MS', 10))
@@ -23,19 +24,24 @@ class TimerApp:
                                      width=10, command=self.stop_timer)
 
         # Проверка заданий
-        self.correct_button = tk.Button(root, text=f'Верно', width=10, command=self.correct_answer)
+        self.correct_button = tk.Button(root, text=f'Верно', width=10, background='#00FF7F', command=self.correct_answer)
         self.correct_button.place(x=20, y=80)
         self.correct_button['state'] = 'disabled'
 
-        self.incorrect_button = tk.Button(root, text='Неверно', width=10, command=self.incorrect_answer)
+        self.incorrect_button = tk.Button(root, text='Неверно', width=10, background='#FF4500',
+                                          command=self.incorrect_answer)
         self.incorrect_button.place(x=20, y=120)
         self.incorrect_button['state'] = 'disabled'
+
+        self.undo_button = tk.Button(root, text='Мисклик', width=10, command=self.undo_action)
+        self.undo_button.place(x=250, y=80)
+        self.undo_button['state'] = 'disabled'
 
         # Статистика
         self.result_label = tk.Label(root, text='Проверено: 0, Успеваемость: 0.0%', font=('Comic Sans MS', 10))
         self.result_label.pack()
-        self.midl_time = tk.Label(root, text='В среднем на проверку: ')
-        self.midl_time.pack()
+        self.midl_time = tk.Label(root, text='В среднем на проверку: 00:00:00', font=('Comic Sans MS', 10))
+        self.midl_time.place(x=40, y=150)
 
         # Инициализация
         self.running = False
@@ -44,6 +50,8 @@ class TimerApp:
         self.total_checked = 0
         self.correct_checked = 0
         self.incorrect_checked = 0
+        self.last_action = None
+        self.now = datetime.datetime.now()
 
     def update_time(self):
         if self.running:
@@ -55,8 +63,12 @@ class TimerApp:
             hours, remainder = divmod(int(elapsed), 3600)
             minutes, seconds = divmod(remainder, 60)
             self.time_label.config(text=f"{hours:02}:{minutes:02}:{seconds:02}")
+
             if self.total_checked > 0:
-                self.midl_time.config(text=f"{hours / self.total_checked}:{minutes / self.total_checked}:{seconds / self.total_checked}")
+                avg_seconds = self.elapsed_time / self.total_checked
+                avg_hours, avg_remainder = divmod(int(avg_seconds), 3600)
+                avg_minutes, avg_seconds = divmod(avg_remainder, 60)
+                self.midl_time.config(text=f"В среднем на проверку: {avg_hours:02}:{avg_minutes:02}:{avg_seconds:02}")
 
             self.root.after(1000, self.update_time)
 
@@ -66,7 +78,8 @@ class TimerApp:
             self.running = True
             self.correct_button['state'] = 'normal'
             self.incorrect_button['state'] = 'normal'
-            self.stop_button.place(x=250, y=110)
+            self.undo_button['state'] = 'normal'
+            self.stop_button.place(x=250, y=120)
             self.pause_button.pack()
             self.update_time()
             self.start_button.forget()
@@ -87,20 +100,37 @@ class TimerApp:
             self.running = False
         self.correct_button['state'] = 'disabled'
         self.incorrect_button['state'] = 'disabled'
+        self.undo_button['state'] = 'disabled'
         self.start_button.forget()
         self.pause_button.forget()
         self.stop_button.forget()
+        #with open('result.txt', 'a') as file:
+            #file.write(f'{self.now.strftime("%d-%m-%Y %H:%M")}, Затрачено времени: ')
 
     def correct_answer(self):
         self.total_checked += 1
         self.correct_checked += 1
         self.correct_button.configure(text=f'Верно: {self.correct_checked}')
+        self.last_action = 'correct'
         self.update_results()
 
     def incorrect_answer(self):
         self.total_checked += 1
         self.incorrect_checked += 1
         self.incorrect_button.configure(text=f'Неверно: {self.incorrect_checked}')
+        self.last_action = 'incorrect'
+        self.update_results()
+
+    def undo_action(self):
+        if self.last_action == 'correct' and self.correct_checked > 0:
+            self.total_checked -= 1
+            self.correct_checked -= 1
+            self.correct_button.configure(text=f'Верно: {self.correct_checked}')
+        elif self.last_action == 'incorrect' and self.incorrect_checked > 0:
+            self.total_checked -= 1
+            self.incorrect_checked -= 1
+            self.incorrect_button.configure(text=f'Неверно: {self.incorrect_checked}')
+        self.last_action = None
         self.update_results()
 
     def update_results(self):
