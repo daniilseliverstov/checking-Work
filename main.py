@@ -1,6 +1,8 @@
 import tkinter as tk
 import time
 import datetime
+import sqlite3
+from results_window import ResultsWindow
 
 
 class TimerApp:
@@ -22,6 +24,9 @@ class TimerApp:
 
         self.stop_button = tk.Button(root, text='Завершить', font=('Comic Sans MS', 10),
                                      width=10, command=self.stop_timer)
+        self.results_button = tk.Button(root, text="Результаты", font=('Comic Sans MS', 10),
+                                        command=self.open_results_window,)
+        self.results_button.place(x=150, y=105)
 
         # Проверка заданий
         self.correct_button = tk.Button(root, text=f'Верно', width=10, background='#00FF7F', command=self.correct_answer)
@@ -52,6 +57,33 @@ class TimerApp:
         self.incorrect_checked = 0
         self.last_action = None
         self.now = datetime.datetime.now()
+
+        self.conn = sqlite3.connect("results.db")
+        self.cursor = self.conn.cursor()
+        self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS results (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL,
+                        start_time TEXT NOT NULL,
+                        elapsed_time TEXT NOT NULL,
+                        total_checked INTEGER NOT NULL,
+                        success_rate REAL NOT NULL
+                    )
+                """)
+        self.conn.commit()
+
+    def save_result(self):
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        start_time = self.now.strftime("%Y-%m-%d %H:%M:%S")
+        elapsed_time = self.time_label.cget("text")
+        total_checked = self.total_checked
+        success_rate = (self.correct_checked / self.total_checked) * 100 if self.total_checked > 0 else 0.0
+
+        self.cursor.execute("""
+            INSERT INTO results (timestamp, start_time, elapsed_time, total_checked, success_rate)
+            VALUES (?, ?, ?, ?, ?)
+        """, (timestamp, start_time, elapsed_time, total_checked, success_rate))
+        self.conn.commit()
 
     def update_time(self):
         if self.running:
@@ -104,8 +136,10 @@ class TimerApp:
         self.start_button.forget()
         self.pause_button.forget()
         self.stop_button.forget()
-        #with open('result.txt', 'a') as file:
-            #file.write(f'{self.now.strftime("%d-%m-%Y %H:%M")}, Затрачено времени: ')
+        if self.running:
+            self.elapsed_time += time.time() - self.start_time
+            self.running = False
+        self.save_result()
 
     def correct_answer(self):
         self.total_checked += 1
@@ -143,6 +177,10 @@ class TimerApp:
             text=f'Проверено: {self.total_checked}, Успеваемость: {percentage:.1f}%'
         )
 
+    def open_results_window(self):
+        results_window = tk.Toplevel(self.root)
+        ResultsWindow(results_window, "results.db")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -154,3 +192,4 @@ if __name__ == "__main__":
 
     root.attributes("-topmost", True)
     root.mainloop()
+    app.conn.close()
