@@ -27,7 +27,7 @@
 
 2. Установите необходимые пакеты:
 
-pip install tk
+pip install tkinter
 
 
 ### Использование
