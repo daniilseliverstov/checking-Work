@@ -63,7 +63,6 @@ class TimerApp:
         self.cursor.execute("""
                     CREATE TABLE IF NOT EXISTS results (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        timestamp TEXT NOT NULL,
                         start_time TEXT NOT NULL,
                         elapsed_time TEXT NOT NULL,
                         total_checked INTEGER NOT NULL,
@@ -73,16 +72,15 @@ class TimerApp:
         self.conn.commit()
 
     def save_result(self):
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         start_time = self.now.strftime("%Y-%m-%d %H:%M:%S")
         elapsed_time = self.time_label.cget("text")
         total_checked = self.total_checked
         success_rate = (self.correct_checked / self.total_checked) * 100 if self.total_checked > 0 else 0.0
 
         self.cursor.execute("""
-            INSERT INTO results (timestamp, start_time, elapsed_time, total_checked, success_rate)
-            VALUES (?, ?, ?, ?, ?)
-        """, (timestamp, start_time, elapsed_time, total_checked, success_rate))
+            INSERT INTO results (start_time, elapsed_time, total_checked, success_rate)
+            VALUES (?, ?, ?, ?)
+        """, (start_time, elapsed_time, total_checked, success_rate))
         self.conn.commit()
 
     def update_time(self):
